@@ -35,6 +35,8 @@ jobs:
     name: Deploy Cliente
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
 
     steps:
       - name: Checkout Code
@@ -78,6 +80,8 @@ jobs:
     name: Deploy Produto
     needs: deploy_cliente
     runs-on: ubuntu-latest
+    outputs:
+      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
 
     steps:
       - name: Checkout Code
