@@ -55,7 +55,10 @@ jobs:
           DB_ENDPOINT_CLI: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_CLI }}
         run: |
           terraform init
-          terraform apply -auto-approve
+          terraform apply -auto-approve \
+            -var="db_username=$DB_USERNAME" \
+            -var="db_password=$DB_PASSWORD" \
+            -var="db_endpoint=$DB_ENDPOINT_CLI"
         id: deploy_cliente
 
       - name: Save Cliente Output
@@ -85,7 +88,10 @@ jobs:
           DB_ENDPOINT_PRO: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PRO }}
         run: |
           terraform init
-          terraform apply -auto-approve
+          terraform apply -auto-approve \
+            -var="db_username=$DB_USERNAME" \
+            -var="db_password=$DB_PASSWORD" \
+            -var="db_endpoint=$DB_ENDPOINT_PRO"
         id: deploy_produto
 
       - name: Save Produto Output
@@ -119,5 +125,8 @@ jobs:
         run: |
           terraform init
           terraform apply -auto-approve \
+          -var="db_username=$DB_USERNAME" \
+            -var="db_password=$DB_PASSWORD" \
+            -var="db_endpoint=$DB_ENDPOINT_PED"
             -var "cliente_endpoint=$CLIENTE_ENDPOINT" \
             -var "produto_endpoint=$PRODUTO_ENDPOINT"
