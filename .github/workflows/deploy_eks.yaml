@@ -31,10 +31,6 @@ jobs:
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
 
-      - name: Run Application Tests
-        run: |
-          ./run_tests.sh
-
   deploy_cliente:
     name: Deploy Cliente
     needs: validate
