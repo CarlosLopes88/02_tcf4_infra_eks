@@ -48,7 +48,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy Cliente Application
-        working-directory: ./infra_eks/cliente
+        working-directory: infra_eks/cliente
         env:
           DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
@@ -78,7 +78,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy Produto Application
-        working-directory: ./infra_eks/produto
+        working-directory: infra_eks/produto
         env:
           DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
@@ -108,7 +108,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy PedidoPgto Application
-        working-directory: ./infra_eks/pedidopgto
+        working-directory: infra_eks/pedidopgto
         env:
           DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
