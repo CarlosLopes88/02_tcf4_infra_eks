@@ -40,3 +40,10 @@ git branch -M main
 
 git push -u origin main
 
+git checkout -b dev
+
+git add .
+
+git commit -m "subida infra eks"
+
+git push -u origin dev
