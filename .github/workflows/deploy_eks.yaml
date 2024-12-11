@@ -147,3 +147,5 @@ jobs:
             -var="db_endpoint=$DB_ENDPOINT_PED" \
             -var="cliente_endpoint=$CLIENTE_ENDPOINT" \
             -var="produto_endpoint=$PRODUTO_ENDPOINT"
+
+# comentário
