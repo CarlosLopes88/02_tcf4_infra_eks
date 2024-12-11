@@ -14,6 +14,8 @@
 cliente.tf
 
 
+
+
 produto.tf
 
 
@@ -37,3 +39,4 @@ git commit -m "subida infra eks"
 git branch -M main
 
 git push -u origin main
+
