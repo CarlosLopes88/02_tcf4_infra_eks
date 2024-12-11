@@ -35,10 +35,15 @@ jobs:
     name: Deploy Cliente
     needs: validate
     runs-on: ubuntu-latest
+    outputs:
+      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}  # Declarar output do job
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -48,7 +53,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy Cliente Application
-        working-directory: ./cliente
+        working-directory: ${{ github.workspace }}/infra_eks/cliente
         env:
           DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
@@ -59,19 +64,26 @@ jobs:
             -var="db_username=$DB_USERNAME" \
             -var="db_password=$DB_PASSWORD" \
             -var="db_endpoint=$DB_ENDPOINT_CLI"
-        id: deploy_cliente
 
       - name: Save Cliente Output
-        run: echo "CLIENTE_ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint)" >> $GITHUB_ENV
+        id: save_endpoint  # Adicionar ID ao step
+        run: |
+          ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint || echo "")
+          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT  # Usar GITHUB_OUTPUT
 
   deploy_produto:
     name: Deploy Produto
     needs: deploy_cliente
     runs-on: ubuntu-latest
+    outputs:
+      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}  # Declarar output do job
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -81,7 +93,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy Produto Application
-        working-directory: ./produto
+        working-directory: ${{ github.workspace }}/infra_eks/produto
         env:
           DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
@@ -92,10 +104,12 @@ jobs:
             -var="db_username=$DB_USERNAME" \
             -var="db_password=$DB_PASSWORD" \
             -var="db_endpoint=$DB_ENDPOINT_PRO"
-        id: deploy_produto
 
       - name: Save Produto Output
-        run: echo "PRODUTO_ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint)" >> $GITHUB_ENV
+        id: save_endpoint  # Adicionar ID ao step
+        run: |
+          ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint || echo "")
+          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT  # Usar GITHUB_OUTPUT
 
   deploy_pedidopgto:
     name: Deploy PedidoPgto
@@ -106,6 +120,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -114,19 +131,19 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy PedidoPgto Application
-        working-directory: ./pedidopgto
+        working-directory: ${{ github.workspace }}/infra_eks/pedidopgto
         env:
           DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
           DB_ENDPOINT_PED: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}
           PAGSEGURO_TOKEN: ${{ secrets.PAGSEGURO_TOKEN }}
-          CLIENTE_ENDPOINT: ${{ env.CLIENTE_ENDPOINT }}
-          PRODUTO_ENDPOINT: ${{ env.PRODUTO_ENDPOINT }}
+          CLIENTE_ENDPOINT: ${{ needs.deploy_cliente.outputs.endpoint }}  # Usar output do job cliente
+          PRODUTO_ENDPOINT: ${{ needs.deploy_produto.outputs.endpoint }}  # Usar output do job produto
         run: |
           terraform init
           terraform apply -auto-approve \
-          -var="db_username=$DB_USERNAME" \
+            -var="db_username=$DB_USERNAME" \
             -var="db_password=$DB_PASSWORD" \
-            -var="db_endpoint=$DB_ENDPOINT_PED"
-            -var "cliente_endpoint=$CLIENTE_ENDPOINT" \
-            -var "produto_endpoint=$PRODUTO_ENDPOINT"
+            -var="db_endpoint=$DB_ENDPOINT_PED" \
+            -var="cliente_endpoint=$CLIENTE_ENDPOINT" \
+            -var="produto_endpoint=$PRODUTO_ENDPOINT"
