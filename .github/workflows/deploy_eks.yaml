@@ -36,7 +36,7 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     outputs:
-      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
+      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}  # Declarar output do job
 
     steps:
       - name: Checkout Code
@@ -64,24 +64,19 @@ jobs:
             -var="db_username=$DB_USERNAME" \
             -var="db_password=$DB_PASSWORD" \
             -var="db_endpoint=$DB_ENDPOINT_CLI"
-          
-          echo "Aguardando LoadBalancer..."
-          sleep 60
-          
+
+      - name: Save Cliente Output
+        id: save_endpoint  # Adicionar ID ao step
+        run: |
           ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint || echo "")
-          if [ ! -z "$ENDPOINT" ]; then
-            echo "CLIENTE_ENDPOINT=$ENDPOINT" >> $GITHUB_ENV
-          else
-            echo "Erro: LoadBalancer endpoint não encontrado"
-            exit 1
-          fi
+          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT  # Usar GITHUB_OUTPUT
 
   deploy_produto:
     name: Deploy Produto
     needs: deploy_cliente
     runs-on: ubuntu-latest
     outputs:
-      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
+      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}  # Declarar output do job
 
     steps:
       - name: Checkout Code
@@ -109,17 +104,12 @@ jobs:
             -var="db_username=$DB_USERNAME" \
             -var="db_password=$DB_PASSWORD" \
             -var="db_endpoint=$DB_ENDPOINT_PRO"
-          
-          echo "Aguardando LoadBalancer..."
-          sleep 60
-          
+
+      - name: Save Produto Output
+        id: save_endpoint  # Adicionar ID ao step
+        run: |
           ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint || echo "")
-          if [ ! -z "$ENDPOINT" ]; then
-            echo "PRODUTO_ENDPOINT=$ENDPOINT" >> $GITHUB_ENV
-          else
-            echo "Erro: LoadBalancer endpoint não encontrado"
-            exit 1
-          fi
+          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT  # Usar GITHUB_OUTPUT
 
   deploy_pedidopgto:
     name: Deploy PedidoPgto
@@ -147,8 +137,8 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
           DB_ENDPOINT_PED: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}
           PAGSEGURO_TOKEN: ${{ secrets.PAGSEGURO_TOKEN }}
-          CLIENTE_ENDPOINT: ${{ env.CLIENTE_ENDPOINT }}
-          PRODUTO_ENDPOINT: ${{ env.PRODUTO_ENDPOINT }}
+          CLIENTE_ENDPOINT: ${{ needs.deploy_cliente.outputs.endpoint }}  # Usar output do job cliente
+          PRODUTO_ENDPOINT: ${{ needs.deploy_produto.outputs.endpoint }}  # Usar output do job produto
         run: |
           terraform init
           terraform apply -auto-approve \
