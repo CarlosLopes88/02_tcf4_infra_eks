@@ -36,7 +36,7 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     outputs:
-      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}  # Declarar output do job
+      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
 
     steps:
       - name: Checkout Code
@@ -66,17 +66,17 @@ jobs:
             -var="db_endpoint=$DB_ENDPOINT_CLI"
 
       - name: Save Cliente Output
-        id: save_endpoint  # Adicionar ID ao step
+        id: save_endpoint
         run: |
           ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint || echo "")
-          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT  # Usar GITHUB_OUTPUT
+          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
 
   deploy_produto:
     name: Deploy Produto
     needs: deploy_cliente
     runs-on: ubuntu-latest
     outputs:
-      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}  # Declarar output do job
+      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
 
     steps:
       - name: Checkout Code
@@ -106,10 +106,10 @@ jobs:
             -var="db_endpoint=$DB_ENDPOINT_PRO"
 
       - name: Save Produto Output
-        id: save_endpoint  # Adicionar ID ao step
+        id: save_endpoint
         run: |
           ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint || echo "")
-          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT  # Usar GITHUB_OUTPUT
+          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
 
   deploy_pedidopgto:
     name: Deploy PedidoPgto
@@ -137,8 +137,8 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
           DB_ENDPOINT_PED: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}
           PAGSEGURO_TOKEN: ${{ secrets.PAGSEGURO_TOKEN }}
-          CLIENTE_ENDPOINT: ${{ needs.deploy_cliente.outputs.endpoint }}  # Usar output do job cliente
-          PRODUTO_ENDPOINT: ${{ needs.deploy_produto.outputs.endpoint }}  # Usar output do job produto
+          CLIENTE_ENDPOINT: ${{ needs.deploy_cliente.outputs.endpoint }}
+          PRODUTO_ENDPOINT: ${{ needs.deploy_produto.outputs.endpoint }}
         run: |
           terraform init
           terraform apply -auto-approve \
@@ -148,4 +148,27 @@ jobs:
             -var="cliente_endpoint=$CLIENTE_ENDPOINT" \
             -var="produto_endpoint=$PRODUTO_ENDPOINT"
 
-# comentário
+  cleanup:
+    name: Cleanup on Failure
+    needs: [validate, deploy_cliente, deploy_produto, deploy_pedidopgto]
+    if: failure()  # Executa apenas se algum job falhar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Destroy Resources
+        run: |
+          terraform init
+          terraform destroy -auto-approve
