@@ -1,0 +1,39 @@
+
+├── /infra_eks
+│   ├── /.github
+│   │   └── /workflows
+|   │   │   └── deploy_eks.yaml
+│   ├── /cliente
+│   │   └── cliente.tf
+│   ├── /produto
+│   │   └── produto.tf
+│   ├── /pedidopgto
+│   │   └── pedidopgto.tf
+
+
+cliente.tf
+
+
+produto.tf
+
+
+pedidopgto.tf
+
+
+deploy_eks.yaml
+
+
+
+
+
+git init
+
+git remote add origin https://github.com/CarlosLopes88/02_tcf4_infra_eks.git
+
+git add .
+
+git commit -m "subida infra eks"
+
+git branch -M main
+
+git push -u origin main

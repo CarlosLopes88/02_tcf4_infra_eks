@@ -1,0 +1,123 @@
+name: Deploy EKS Applications with Database Dependencies
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  validate:
+    name: Validate Code and Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 11 for SonarQube
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+
+      - name: Run SonarQube Analysis
+        uses: sonarsource/sonarcloud-github-action@v1.8
+        with:
+          projectKey: ${{ secrets.SONAR_PROJECT_KEY }}
+          organization: ${{ secrets.SONAR_ORGANIZATION }}
+          token: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Run Application Tests
+        run: |
+          ./run_tests.sh
+
+  deploy_cliente:
+    name: Deploy Cliente
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy Cliente Application
+        working-directory: ./infra_eks/cliente
+        env:
+          DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
+          DB_ENDPOINT_CLI: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_CLI }}
+        run: |
+          terraform init
+          terraform apply -auto-approve
+        id: deploy_cliente
+
+      - name: Save Cliente Output
+        run: echo "CLIENTE_ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint)" >> $GITHUB_ENV
+
+  deploy_produto:
+    name: Deploy Produto
+    needs: deploy_cliente
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy Produto Application
+        working-directory: ./infra_eks/produto
+        env:
+          DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
+          DB_ENDPOINT_PRO: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PRO }}
+        run: |
+          terraform init
+          terraform apply -auto-approve
+        id: deploy_produto
+
+      - name: Save Produto Output
+        run: echo "PRODUTO_ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint)" >> $GITHUB_ENV
+
+  deploy_pedidopgto:
+    name: Deploy PedidoPgto
+    needs: deploy_produto
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy PedidoPgto Application
+        working-directory: ./infra_eks/pedidopgto
+        env:
+          DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
+          DB_ENDPOINT_PED: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}
+          PAGSEGURO_TOKEN: ${{ secrets.PAGSEGURO_TOKEN }}
+          CLIENTE_ENDPOINT: ${{ env.CLIENTE_ENDPOINT }}
+          PRODUTO_ENDPOINT: ${{ env.PRODUTO_ENDPOINT }}
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+            -var "cliente_endpoint=$CLIENTE_ENDPOINT" \
+            -var "produto_endpoint=$PRODUTO_ENDPOINT"
