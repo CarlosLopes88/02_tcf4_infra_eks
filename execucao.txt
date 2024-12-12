@@ -96,10 +96,8 @@ kubectl get service
 
 kubectl get pods
 
-microservice-cliente-deployment-5b75687d47-v2vd4
+kubectl logs 
 
-kubectl logs microservice-cliente-deployment-5b75687d47-v2vd4
+kubectl describe pod 
 
-kubectl describe pod microservice-cliente-deployment-5b75687d47-v2vd4
-
-kubectl describe deployment microservice-cliente-deployment-5b75687d47-v2vd4
+kubectl describe deployment 

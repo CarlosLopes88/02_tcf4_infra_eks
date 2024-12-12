@@ -284,12 +284,12 @@ resource "kubernetes_deployment" "microservice_pedidopgto" {
           }
 
           env {
-            name  = "DB_USERNAME"
+            name  = "DOCDB_USERNAME"
             value = var.db_username
           }
 
           env {
-            name  = "DB_PASSWORD"
+            name  = "DOCDB_PASSWORD"
             value = var.db_password
           }
 
@@ -299,7 +299,7 @@ resource "kubernetes_deployment" "microservice_pedidopgto" {
           }
 
           env {
-            name  = "DB_ENDPOINT_PED"
+            name  = "DOCDB_CLUSTER_ENDPOINT_PED"
             value = var.db_endpoint
           }
         }
