@@ -225,9 +225,9 @@ resource "kubernetes_deployment" "microservice_cliente" {
   depends_on = [time_sleep.wait_for_secret]
 
   timeouts {
-    create = "20m"
-    update = "20m"
-    delete = "20m"
+    create = "30m"
+    update = "30m"
+    delete = "30m"
   }
 
   metadata {
