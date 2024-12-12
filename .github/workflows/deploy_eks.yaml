@@ -36,13 +36,12 @@ jobs:
         terraform_version: 1.10.1
 
     - name: Inicializar Terraform
-      run: |
-        cd cliente
-        terraform init
+      working-directory: ./cliente
+      run: terraform init
 
     - name: Aplicar configuração Terraform
+      working-directory: ./cliente
       run: |
-        cd cliente
         terraform apply -auto-approve \
           -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
           -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
@@ -50,8 +49,8 @@ jobs:
 
     - name: Capturar Endpoint do Cliente
       id: get-endpoint
+      working-directory: ./cliente
       run: |
-        cd cliente
         ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint)
         echo "endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
 
@@ -79,13 +78,12 @@ jobs:
         terraform_version: 1.10.1
 
     - name: Inicializar Terraform
-      run: |
-        cd produto
-        terraform init
+      working-directory: ./produto
+      run: terraform init
 
     - name: Aplicar configuração Terraform
+      working-directory: ./produto
       run: |
-        cd produto
         terraform apply -auto-approve \
           -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
           -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
@@ -93,8 +91,8 @@ jobs:
 
     - name: Capturar Endpoint do Produto
       id: get-endpoint
+      working-directory: ./produto
       run: |
-        cd produto
         ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint)
         echo "endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
 
@@ -120,13 +118,12 @@ jobs:
         terraform_version: 1.10.1
 
     - name: Inicializar Terraform
-      run: |
-        cd pedidopgto
-        terraform init
+      working-directory: ./pedidopgto
+      run: terraform init
 
     - name: Aplicar configuração Terraform
+      working-directory: ./pedidopgto
       run: |
-        cd pedidopgto
         terraform apply -auto-approve \
           -var="cliente_endpoint=${{ needs.deploy-cliente.outputs.cliente_endpoint }}" \
           -var="produto_endpoint=${{ needs.deploy-produto.outputs.produto_endpoint }}" \
