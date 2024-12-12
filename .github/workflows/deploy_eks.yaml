@@ -34,8 +34,8 @@ jobs:
           terraform apply -auto-approve \
             -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
             -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
+            -var="db_name=${{ secrets.DOCDB_DBNAME }}" \
             -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_CLI }}"
-            -var="db_name=${{ secrets.DOCDB_DBNAME }}"
           
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-cliente --region ${{ secrets.AWS_REGION }}
@@ -83,8 +83,8 @@ jobs:
           terraform apply -auto-approve \
             -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
             -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
+            -var="db_name=${{ secrets.DOCDB_DBNAME }}" \
             -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PRO }}"
-            -var="db_name=${{ secrets.DOCDB_DBNAME }}"
             
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-produto --region ${{ secrets.AWS_REGION }}
@@ -135,8 +135,8 @@ jobs:
             -var="produto_endpoint=${{ needs.deploy-produto.outputs.loadbalancer_endpoint }}" \
             -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
             -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
+            -var="db_name=${{ secrets.DOCDB_DBNAME }}" \
             -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}"
-            -var="db_name=${{ secrets.DOCDB_DBNAME }}"
             
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-pedidopgto --region ${{ secrets.AWS_REGION }}
