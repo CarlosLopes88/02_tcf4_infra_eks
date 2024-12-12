@@ -186,7 +186,7 @@ module "eks" {
 ###############################
 resource "time_sleep" "wait_for_cluster" {
   depends_on = [module.eks]
-  create_duration = "30s"
+  create_duration = "60s"
 }
 
 ###############################
@@ -218,16 +218,16 @@ resource "kubernetes_secret" "ecr_secret" {
 
 resource "time_sleep" "wait_for_secret" {
   depends_on = [kubernetes_secret.ecr_secret]
-  create_duration = "10s"
+  create_duration = "60s"
 }
 
 resource "kubernetes_deployment" "microservice_produto" {
   depends_on = [time_sleep.wait_for_secret]
 
   timeouts {
-    create = "15m"
-    update = "15m"
-    delete = "15m"
+    create = "20m"
+    update = "20m"
+    delete = "20m"
   }
 
   metadata {
