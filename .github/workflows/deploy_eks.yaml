@@ -1,218 +1,229 @@
 name: Deploy EKS Applications with Database Dependencies
 
 on:
-  pull_request:
-    branches:
-      - main
-      - master
+ pull_request:
+   branches:
+     - main
+     - master
 
 jobs:
-  validate:
-    name: Validate Code and Run Tests
-    runs-on: ubuntu-latest
+ validate:
+   name: Validate Code and Run Tests
+   runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+   steps:
+     - name: Checkout Code
+       uses: actions/checkout@v3
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+     - name: Set up JDK 17
+       uses: actions/setup-java@v3
+       with:
+         java-version: '17'
+         distribution: 'temurin'
 
-      - name: SonarCloud Scan
-        uses: sonarsource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+     - name: SonarCloud Scan
+       uses: sonarsource/sonarcloud-github-action@master
+       env:
+         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+       with:
+         args: >
+           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
 
-  deploy_cliente:
-    name: Deploy Cliente
-    needs: validate
-    runs-on: ubuntu-latest
-    outputs:
-      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
+ deploy_cliente:
+   name: Deploy Cliente
+   needs: validate
+   runs-on: ubuntu-latest
+   outputs:
+     endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+   steps:
+     - name: Checkout Code
+       uses: actions/checkout@v3
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+     - name: Debug Working Directory
+       run: |
+         pwd
+         ls
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+     - name: Setup Terraform
+       uses: hashicorp/setup-terraform@v2
 
-      - name: Deploy Cliente Application
-        id: deploy_cliente
-        working-directory: ./cliente
-        env:
-          DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
-          DB_ENDPOINT_CLI: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_CLI }}
-        run: |
-          terraform init
-          terraform apply -auto-approve \
-            -var="db_username=$DB_USERNAME" \
-            -var="db_password=$DB_PASSWORD" \
-            -var="db_endpoint=$DB_ENDPOINT_CLI"
+     - name: Configure AWS Credentials
+       uses: aws-actions/configure-aws-credentials@v2
+       with:
+         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+         aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Save Cliente Output
-        id: save_endpoint
-        run: |
-          ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint || echo "")
-          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
+     - name: Deploy Cliente Application
+       id: deploy_cliente
+       working-directory: ./cliente
+       env:
+         DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
+         DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
+         DB_ENDPOINT_CLI: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_CLI }}
+       run: |
+         terraform init
+         terraform apply -auto-approve \
+           -var="db_username=$DB_USERNAME" \
+           -var="db_password=$DB_PASSWORD" \
+           -var="db_endpoint=$DB_ENDPOINT_CLI"
 
-      - name: Rollback Cliente on Failure
-        if: failure() && steps.deploy_cliente.outcome == 'failure'
-        working-directory: ./cliente
-        run: |
-          terraform destroy -auto-approve
-          echo "Cliente microservice rolled back due to deployment failure"
+     - name: Save Cliente Output
+       id: save_endpoint
+       working-directory: ./cliente
+       run: |
+         terraform init
+         ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint || echo "")
+         echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
 
-  deploy_produto:
-    name: Deploy Produto
-    needs: deploy_cliente
-    runs-on: ubuntu-latest
-    outputs:
-      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
+     - name: Rollback Cliente on Failure
+       if: failure()
+       working-directory: ./cliente
+       run: |
+         terraform init
+         terraform destroy -auto-approve
+         echo "Cliente microservice rolled back due to deployment failure"
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+ deploy_produto:
+   name: Deploy Produto
+   needs: deploy_cliente
+   runs-on: ubuntu-latest
+   outputs:
+     endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+   steps:
+     - name: Checkout Code
+       uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+     - name: Setup Terraform
+       uses: hashicorp/setup-terraform@v2
 
-      - name: Deploy Produto Application
-        id: deploy_produto
-        working-directory: ./produto
-        env:
-          DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
-          DB_ENDPOINT_PRO: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PRO }}
-        run: |
-          terraform init
-          terraform apply -auto-approve \
-            -var="db_username=$DB_USERNAME" \
-            -var="db_password=$DB_PASSWORD" \
-            -var="db_endpoint=$DB_ENDPOINT_PRO"
+     - name: Configure AWS Credentials
+       uses: aws-actions/configure-aws-credentials@v2
+       with:
+         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+         aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Save Produto Output
-        id: save_endpoint
-        run: |
-          ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint || echo "")
-          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
+     - name: Deploy Produto Application
+       id: deploy_produto
+       working-directory: ./produto
+       env:
+         DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
+         DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
+         DB_ENDPOINT_PRO: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PRO }}
+       run: |
+         terraform init
+         terraform apply -auto-approve \
+           -var="db_username=$DB_USERNAME" \
+           -var="db_password=$DB_PASSWORD" \
+           -var="db_endpoint=$DB_ENDPOINT_PRO"
 
-      - name: Rollback Produto on Failure
-        if: failure() && steps.deploy_produto.outcome == 'failure'
-        working-directory: ./produto
-        run: |
-          terraform destroy -auto-approve
-          echo "Produto microservice rolled back due to deployment failure"
+     - name: Save Produto Output
+       id: save_endpoint
+       working-directory: ./produto
+       run: |
+         terraform init
+         ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint || echo "")
+         echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
 
-  deploy_pedidopgto:
-    name: Deploy PedidoPgto
-    needs: deploy_produto
-    runs-on: ubuntu-latest
+     - name: Rollback Produto on Failure
+       if: failure()
+       working-directory: ./produto
+       run: |
+         terraform init
+         terraform destroy -auto-approve
+         echo "Produto microservice rolled back due to deployment failure"
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+ deploy_pedidopgto:
+   name: Deploy PedidoPgto
+   needs: deploy_produto
+   runs-on: ubuntu-latest
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+   steps:
+     - name: Checkout Code
+       uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+     - name: Setup Terraform
+       uses: hashicorp/setup-terraform@v2
 
-      - name: Deploy PedidoPgto Application
-        id: deploy_pedidopgto
-        working-directory: ./pedidopgto
-        env:
-          DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
-          DB_ENDPOINT_PED: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}
-          PAGSEGURO_TOKEN: ${{ secrets.PAGSEGURO_TOKEN }}
-          CLIENTE_ENDPOINT: ${{ needs.deploy_cliente.outputs.endpoint }}
-          PRODUTO_ENDPOINT: ${{ needs.deploy_produto.outputs.endpoint }}
-        run: |
-          terraform init
-          terraform apply -auto-approve \
-            -var="db_username=$DB_USERNAME" \
-            -var="db_password=$DB_PASSWORD" \
-            -var="db_endpoint=$DB_ENDPOINT_PED" \
-            -var="cliente_endpoint=$CLIENTE_ENDPOINT" \
-            -var="produto_endpoint=$PRODUTO_ENDPOINT"
+     - name: Configure AWS Credentials
+       uses: aws-actions/configure-aws-credentials@v2
+       with:
+         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+         aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Rollback PedidoPgto on Failure
-        if: failure() && steps.deploy_pedidopgto.outcome == 'failure'
-        working-directory: ./pedidopgto
-        run: |
-          terraform destroy -auto-approve
-          echo "PedidoPgto microservice rolled back due to deployment failure"
+     - name: Deploy PedidoPgto Application
+       id: deploy_pedidopgto
+       working-directory: ./pedidopgto
+       env:
+         DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
+         DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
+         DB_ENDPOINT_PED: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}
+         PAGSEGURO_TOKEN: ${{ secrets.PAGSEGURO_TOKEN }}
+         CLIENTE_ENDPOINT: ${{ needs.deploy_cliente.outputs.endpoint }}
+         PRODUTO_ENDPOINT: ${{ needs.deploy_produto.outputs.endpoint }}
+       run: |
+         terraform init
+         terraform apply -auto-approve \
+           -var="db_username=$DB_USERNAME" \
+           -var="db_password=$DB_PASSWORD" \
+           -var="db_endpoint=$DB_ENDPOINT_PED" \
+           -var="cliente_endpoint=$CLIENTE_ENDPOINT" \
+           -var="produto_endpoint=$PRODUTO_ENDPOINT"
 
-  global_cleanup:
-    name: Global Cleanup on Complete Failure
-    needs: [validate, deploy_cliente, deploy_produto, deploy_pedidopgto]
-    if: failure()
-    runs-on: ubuntu-latest
+     - name: Rollback PedidoPgto on Failure
+       if: failure()
+       working-directory: ./pedidopgto
+       run: |
+         terraform init
+         terraform destroy -auto-approve
+         echo "PedidoPgto microservice rolled back due to deployment failure"
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+ global_cleanup:
+   name: Global Cleanup on Complete Failure
+   needs: [validate, deploy_cliente, deploy_produto, deploy_pedidopgto]
+   if: failure()
+   runs-on: ubuntu-latest
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+   steps:
+     - name: Checkout Code
+       uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+     - name: Setup Terraform
+       uses: hashicorp/setup-terraform@v2
 
-      - name: Rollback Cliente
-        working-directory: ./cliente
-        continue-on-error: true
-        run: |
-          terraform destroy -auto-approve
-          echo "Cliente microservice rolled back"
+     - name: Configure AWS Credentials
+       uses: aws-actions/configure-aws-credentials@v2
+       with:
+         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+         aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Rollback Produto
-        working-directory: ./produto
-        continue-on-error: true
-        run: |
-          terraform destroy -auto-approve
-          echo "Produto microservice rolled back"
+     - name: Rollback Cliente
+       working-directory: ./cliente
+       continue-on-error: true
+       run: |
+         terraform init
+         terraform destroy -auto-approve
+         echo "Cliente microservice rolled back"
 
-      - name: Rollback PedidoPgto
-        working-directory: ./pedidopgto
-        continue-on-error: true
-        run: |
-          terraform destroy -auto-approve
-          echo "PedidoPgto microservice rolled back"
+     - name: Rollback Produto
+       working-directory: ./produto
+       continue-on-error: true
+       run: |
+         terraform init
+         terraform destroy -auto-approve
+         echo "Produto microservice rolled back"
 
-      - name: Notify Failure
-        if: failure()
-        run: echo "Deployment failed. No Slack notification configured."
+     - name: Rollback PedidoPgto
+       working-directory: ./pedidopgto
+       continue-on-error: true
+       run: |
+         terraform init
+         terraform destroy -auto-approve
+         echo "PedidoPgto microservice rolled back"
