@@ -1,4 +1,4 @@
-name: Deploy para EKS
+name: Deploy para EKS - Microservices
 
 on:
   pull_request:
