@@ -76,5 +76,30 @@ CloudWatch:
 
 Delete os log groups: /aws/eks/eks-cliente/cluster, /aws/eks/eks-produto/cluster, /aws/eks/eks-pedidopgto/cluster
 
-PS C:\Users\carlo\OneDrive\Área de Trabalho\tech_challenge_4 - final\02_infra_eks> aws kms delete-alias --alias-name alias/eks/eks-cliente
-PS C:\Users\carlo\OneDrive\Área de Trabalho\tech_challenge_4 - final\02_infra_eks> aws logs delete-log-group --log-group-name /aws/eks/eks-cliente/cluster
+aws kms delete-alias --alias-name alias/eks/eks-cliente
+aws logs delete-log-group --log-group-name /aws/eks/eks-cliente/cluster
+
+aws kms delete-alias --alias-name alias/eks/eks-produto
+aws logs delete-log-group --log-group-name /aws/eks/eks-produto/cluster
+
+aws kms delete-alias --alias-name alias/eks/eks-pedidopgto
+aws logs delete-log-group --log-group-name /aws/eks/eks-pedidopgto/cluster
+
+
+aws eks update-kubeconfig --name eks-cliente --region us-east-1
+
+kubectl get node 
+
+kubectl service
+
+kubectl get service
+
+kubectl get pods
+
+microservice-cliente-deployment-5b75687d47-v2vd4
+
+kubectl logs microservice-cliente-deployment-5b75687d47-v2vd4
+
+kubectl describe pod microservice-cliente-deployment-5b75687d47-v2vd4
+
+kubectl describe deployment microservice-cliente-deployment-5b75687d47-v2vd4
