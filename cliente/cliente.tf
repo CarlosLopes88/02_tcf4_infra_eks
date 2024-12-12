@@ -19,15 +19,13 @@ provider "kubernetes" {
 ###############################
 # VPC Configuration
 ###############################
-# Busca a VPC criada no primeiro script
 data "aws_vpc" "existing_vpc" {
   filter {
     name   = "tag:Name"
-    values = ["microservice-vpc"]  # Novo nome da VPC
+    values = ["microservice-vpc"]
   }
 }
 
-# Busca subnets privadas
 data "aws_subnets" "private_subnets" {
   filter {
     name   = "vpc-id"
@@ -40,7 +38,6 @@ data "aws_subnets" "private_subnets" {
   }
 }
 
-# Busca subnets públicas
 data "aws_subnets" "public_subnets" {
   filter {
     name   = "vpc-id"
@@ -53,11 +50,10 @@ data "aws_subnets" "public_subnets" {
   }
 }
 
-# Importa o Security Group para o EKS criado no primeiro script
 data "aws_security_group" "eks" {
   filter {
     name   = "group-name"
-    values = ["eks-sg-cliente"]  # Atualizar para o nome específico
+    values = ["eks-sg-cliente"]
   }
 
   vpc_id = data.aws_vpc.existing_vpc.id
@@ -138,23 +134,17 @@ module "eks" {
   cluster_name    = "eks-cliente"
   cluster_version = "1.28"
 
-  # Configuração de rede
   vpc_id     = data.aws_vpc.existing_vpc.id
   subnet_ids = data.aws_subnets.private_subnets.ids
 
-   # Configuração do Endpoint
-  cluster_endpoint_public_access  = true    # Permite acesso público ao cluster
-  cluster_endpoint_private_access = false   # Desativa acesso privado (requer VPC para funcionar)
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_private_access = false
 
-  # Security Group importado
   cluster_security_group_id = data.aws_security_group.eks.id
+  iam_role_arn             = aws_iam_role.eks_cluster_role.arn
 
-  # IAM Role para o cluster
-  iam_role_arn = aws_iam_role.eks_cluster_role.arn
-
-  # Node Group Configuration
   eks_managed_node_groups = {
-    cliente-node-group = {  # Mais consistente com nomenclatura
+    cliente-node-group = {
       desired_size = 1
       min_size     = 1
       max_size     = 2
@@ -172,7 +162,6 @@ module "eks" {
     }
   }
 
-  # Cluster Addons
   cluster_addons = {
     coredns = {
       most_recent = true
@@ -185,7 +174,7 @@ module "eks" {
     }
   }
 
-tags = {
+  tags = {
     Environment = "dev"
     Terraform   = "true"
     Name        = "eks-cliente"
@@ -193,12 +182,20 @@ tags = {
 }
 
 ###############################
-# Kubernetes Configuration
+# Wait for EKS
+###############################
+resource "time_sleep" "wait_for_cluster" {
+  depends_on = [module.eks]
+  create_duration = "30s"
+}
+
+###############################
+# Kubernetes Resources
 ###############################
 data "aws_ecr_authorization_token" "token" {}
 
 resource "kubernetes_secret" "ecr_secret" {
-  depends_on = [module.eks, aws_iam_role_policy_attachment.ecr_read_only]
+  depends_on = [time_sleep.wait_for_cluster, aws_iam_role_policy_attachment.ecr_read_only]
   
   metadata {
     name = "ecr-secret"
@@ -219,8 +216,19 @@ resource "kubernetes_secret" "ecr_secret" {
   }
 }
 
-resource "kubernetes_deployment" "microservice_cliente" {
+resource "time_sleep" "wait_for_secret" {
   depends_on = [kubernetes_secret.ecr_secret]
+  create_duration = "10s"
+}
+
+resource "kubernetes_deployment" "microservice_cliente" {
+  depends_on = [time_sleep.wait_for_secret]
+
+  timeouts {
+    create = "15m"
+    update = "15m"
+    delete = "15m"
+  }
 
   metadata {
     name = "microservice-cliente-deployment"
@@ -265,7 +273,6 @@ resource "kubernetes_deployment" "microservice_cliente" {
             }
           }
 
-          # Adicionando variáveis de ambiente para dependências e configuração do banco
           env {
             name  = "DB_USERNAME"
             value = var.db_username
@@ -316,6 +323,9 @@ resource "kubernetes_service" "microservice_cliente" {
   }
 }
 
+###############################
+# Variables and Outputs
+###############################
 variable "db_username" {
   description = "Database username for the application"
 }
