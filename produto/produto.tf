@@ -274,17 +274,17 @@ resource "kubernetes_deployment" "microservice_produto" {
           }
 
           env {
-            name  = "DB_USERNAME"
+            name  = "DOCDB_USERNAME"
             value = var.db_username
           }
 
           env {
-            name  = "DB_PASSWORD"
+            name  = "DOCDB_PASSWORD"
             value = var.db_password
           }
 
           env {
-            name  = "DB_ENDPOINT_PRO"
+            name  = "DOCDB_ENDPOINT_PRO"
             value = var.db_endpoint
           }
 
