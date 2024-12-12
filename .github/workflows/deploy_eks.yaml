@@ -1,4 +1,4 @@
-name: Deploy EKS Applications with Database Dependencies
+name: Deploy para EKS
 
 on:
   pull_request:
@@ -6,169 +6,127 @@ on:
       - main
       - master
 
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+permissions:
+  contents: read
+
 jobs:
-  validate:
-    name: Validate Code and Run Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: SonarCloud Scan
-        uses: sonarsource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-
-  deploy_cliente:
-    name: Deploy Cliente
-    needs: validate
+  deploy-cliente:
+    name: Deploy Microserviço Cliente
     runs-on: ubuntu-latest
     outputs:
-      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
-
+      cliente_endpoint: ${{ steps.get-endpoint.outputs.endpoint }}
+    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout do código
+      uses: actions/checkout@v3
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+    - name: Configurar credenciais AWS
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+    - name: Configurar Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.10.1
 
-      - name: Deploy Cliente Application
-        working-directory: ./cliente
-        env:
-          DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
-          DB_ENDPOINT_CLI: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_CLI }}
-        run: |
-          terraform init
-          terraform apply -auto-approve \
-            -var="db_username=$DB_USERNAME" \
-            -var="db_password=$DB_PASSWORD" \
-            -var="db_endpoint=$DB_ENDPOINT_CLI"
+    - name: Inicializar Terraform
+      working-directory: ./cliente
+      run: terraform init
 
-      - name: Save Cliente Output
-        id: save_endpoint
-        run: |
-          ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint || echo "")
-          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
+    - name: Aplicar configuração Terraform
+      working-directory: ./cliente
+      run: |
+        terraform apply -auto-approve \
+          -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
+          -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
+          -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_CLI }}"
 
-  deploy_produto:
-    name: Deploy Produto
-    needs: deploy_cliente
+    - name: Capturar Endpoint do Cliente
+      id: get-endpoint
+      working-directory: ./cliente
+      run: |
+        ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint)
+        echo "endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
+
+  deploy-produto:
+    name: Deploy Microserviço Produto
+    needs: deploy-cliente
     runs-on: ubuntu-latest
     outputs:
-      endpoint: ${{ steps.save_endpoint.outputs.endpoint }}
+      produto_endpoint: ${{ steps.get-endpoint.outputs.endpoint }}
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout do código
+      uses: actions/checkout@v3
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+    - name: Configurar credenciais AWS
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+    - name: Configurar Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.10.1
 
-      - name: Deploy Produto Application
-        working-directory: ./produto
-        env:
-          DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
-          DB_ENDPOINT_PRO: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PRO }}
-        run: |
-          terraform init
-          terraform apply -auto-approve \
-            -var="db_username=$DB_USERNAME" \
-            -var="db_password=$DB_PASSWORD" \
-            -var="db_endpoint=$DB_ENDPOINT_PRO"
+    - name: Inicializar Terraform
+      working-directory: ./produto
+      run: terraform init
 
-      - name: Save Produto Output
-        id: save_endpoint
-        run: |
-          ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint || echo "")
-          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
+    - name: Aplicar configuração Terraform
+      working-directory: ./produto
+      run: |
+        terraform apply -auto-approve \
+          -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
+          -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
+          -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PRO }}"
 
-  deploy_pedidopgto:
-    name: Deploy PedidoPgto
-    needs: deploy_produto
+    - name: Capturar Endpoint do Produto
+      id: get-endpoint
+      working-directory: ./produto
+      run: |
+        ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint)
+        echo "endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
+
+  deploy-pedidopgto:
+    name: Deploy Microserviço Pedido e Pagamento
+    needs: [deploy-cliente, deploy-produto]
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout do código
+      uses: actions/checkout@v3
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+    - name: Configurar credenciais AWS
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+    - name: Configurar Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.10.1
 
-      - name: Deploy PedidoPgto Application
-        working-directory: ./pedidopgto
-        env:
-          DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_MASTER_PASSWORD }}
-          DB_ENDPOINT_PED: ${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}
-          PAGSEGURO_TOKEN: ${{ secrets.PAGSEGURO_TOKEN }}
-          CLIENTE_ENDPOINT: ${{ needs.deploy_cliente.outputs.endpoint }}
-          PRODUTO_ENDPOINT: ${{ needs.deploy_produto.outputs.endpoint }}
-        run: |
-          terraform init
-          terraform apply -auto-approve \
-            -var="db_username=$DB_USERNAME" \
-            -var="db_password=$DB_PASSWORD" \
-            -var="db_endpoint=$DB_ENDPOINT_PED" \
-            -var="cliente_endpoint=$CLIENTE_ENDPOINT" \
-            -var="produto_endpoint=$PRODUTO_ENDPOINT"
+    - name: Inicializar Terraform
+      working-directory: ./pedidopgto
+      run: terraform init
 
-  cleanup:
-    name: Cleanup on Failure
-    needs: [validate, deploy_cliente, deploy_produto, deploy_pedidopgto]
-    if: failure()  # Executa apenas se algum job falhar
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Destroy Resources
-        run: |
-          terraform init
-          terraform destroy -auto-approve
+    - name: Aplicar configuração Terraform
+      working-directory: ./pedidopgto
+      run: |
+        terraform apply -auto-approve \
+          -var="cliente_endpoint=${{ needs.deploy-cliente.outputs.cliente_endpoint }}" \
+          -var="produto_endpoint=${{ needs.deploy-produto.outputs.produto_endpoint }}" \
+          -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
+          -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
+          -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}"

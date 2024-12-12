@@ -155,9 +155,9 @@ module "eks" {
   # Node Group Configuration
   eks_managed_node_groups = {
     cliente-node-group = {  # Mais consistente com nomenclatura
-      desired_size = 2
+      desired_size = 1
       min_size     = 1
-      max_size     = 3
+      max_size     = 2
 
       instance_types = ["t3.medium"]
       capacity_type  = "ON_DEMAND"
@@ -230,7 +230,7 @@ resource "kubernetes_deployment" "microservice_cliente" {
   }
 
   spec {
-    replicas = 2
+    replicas = 1
 
     selector {
       match_labels = {
