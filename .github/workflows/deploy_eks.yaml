@@ -65,7 +65,7 @@ jobs:
           terraform_version: 1.10.1
 
       - name: Deploy Produto
-        working-directory: ./produto
+        working-directory: ./produtos
         run: |
           terraform init
           terraform apply -auto-approve \
@@ -75,7 +75,7 @@ jobs:
 
       - name: Get LoadBalancer Endpoint
         id: get-endpoint
-        working-directory: ./produto
+        working-directory: ./produtos
         run: |
           {
             echo 'lb-endpoint<<EOF'
