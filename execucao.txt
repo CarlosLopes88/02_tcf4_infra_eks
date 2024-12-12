@@ -47,3 +47,34 @@ git add .
 git commit -m "subida infra eks"
 
 git push -u origin dev
+
+
+Para deletar tudo manualmente na AWS de forma segura, aqui está a ordem:
+
+EKS Clusters:
+
+Delete os workloads primeiro (deployments, services)
+Delete os node groups
+Delete os clusters: eks-cliente, eks-produto, eks-pedidopgto
+
+
+IAM:
+
+Remova as roles:
+
+eks-cluster-role-cliente
+eks-nodegroup-role-cliente
+eks-cluster-role-produto
+eks-nodegroup-role-produto
+eks-cluster-role-pedidopgto
+eks-nodegroup-role-pedidopgto
+
+
+
+
+CloudWatch:
+
+Delete os log groups: /aws/eks/eks-cliente/cluster, /aws/eks/eks-produto/cluster, /aws/eks/eks-pedidopgto/cluster
+
+PS C:\Users\carlo\OneDrive\Área de Trabalho\tech_challenge_4 - final\02_infra_eks> aws kms delete-alias --alias-name alias/eks/eks-cliente
+PS C:\Users\carlo\OneDrive\Área de Trabalho\tech_challenge_4 - final\02_infra_eks> aws logs delete-log-group --log-group-name /aws/eks/eks-cliente/cluster

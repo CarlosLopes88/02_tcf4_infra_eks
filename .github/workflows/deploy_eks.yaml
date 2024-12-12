@@ -35,16 +35,22 @@ jobs:
             -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
             -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
             -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_CLI }}"
+          
+          echo "Waiting for EKS cluster..."
+          aws eks wait cluster-active --name eks-cliente --region ${{ secrets.AWS_REGION }}
+          
+          attempt=1
+          max_attempts=10
+          until kubectl rollout status deployment/microservice-cliente-deployment || [ $attempt -eq $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts..."
+            sleep 30
+            attempt=$((attempt + 1))
+          done
 
       - name: Get LoadBalancer Endpoint
         id: get-endpoint
         working-directory: ./cliente
-        run: |
-          {
-            echo 'lb-endpoint<<EOF'
-            terraform output -raw microservice_cliente_loadbalancer_endpoint
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
+        run: echo "lb-endpoint=$(terraform output -raw microservice_cliente_loadbalancer_endpoint)" >> $GITHUB_OUTPUT
 
   deploy-produto:
     runs-on: ubuntu-latest
@@ -72,16 +78,22 @@ jobs:
             -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
             -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
             -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PRO }}"
+            
+          echo "Waiting for EKS cluster..."
+          aws eks wait cluster-active --name eks-produto --region ${{ secrets.AWS_REGION }}
+          
+          attempt=1
+          max_attempts=10
+          until kubectl rollout status deployment/microservice-produto-deployment || [ $attempt -eq $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts..."
+            sleep 30
+            attempt=$((attempt + 1))
+          done
 
       - name: Get LoadBalancer Endpoint
         id: get-endpoint
         working-directory: ./produto
-        run: |
-          {
-            echo 'lb-endpoint<<EOF'
-            terraform output -raw microservice_produto_loadbalancer_endpoint
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
+        run: echo "lb-endpoint=$(terraform output -raw microservice_produto_loadbalancer_endpoint)" >> $GITHUB_OUTPUT
 
   deploy-pedidopgto:
     runs-on: ubuntu-latest
@@ -112,3 +124,14 @@ jobs:
             -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
             -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
             -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}"
+            
+          echo "Waiting for EKS cluster..."
+          aws eks wait cluster-active --name eks-pedidopgto --region ${{ secrets.AWS_REGION }}
+          
+          attempt=1
+          max_attempts=10
+          until kubectl rollout status deployment/microservice-pedidopgto-deployment || [ $attempt -eq $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts..."
+            sleep 30
+            attempt=$((attempt + 1))
+          done
