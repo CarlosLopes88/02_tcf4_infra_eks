@@ -53,6 +53,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy Cliente Application
+        id: deploy_cliente
         working-directory: ./cliente
         env:
           DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
@@ -70,6 +71,13 @@ jobs:
         run: |
           ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint || echo "")
           echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
+
+      - name: Rollback Cliente on Failure
+        if: failure() && steps.deploy_cliente.outcome == 'failure'
+        working-directory: ./cliente
+        run: |
+          terraform destroy -auto-approve
+          echo "Cliente microservice rolled back due to deployment failure"
 
   deploy_produto:
     name: Deploy Produto
@@ -93,6 +101,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy Produto Application
+        id: deploy_produto
         working-directory: ./produto
         env:
           DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
@@ -110,6 +119,13 @@ jobs:
         run: |
           ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint || echo "")
           echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
+
+      - name: Rollback Produto on Failure
+        if: failure() && steps.deploy_produto.outcome == 'failure'
+        working-directory: ./produto
+        run: |
+          terraform destroy -auto-approve
+          echo "Produto microservice rolled back due to deployment failure"
 
   deploy_pedidopgto:
     name: Deploy PedidoPgto
@@ -131,6 +147,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy PedidoPgto Application
+        id: deploy_pedidopgto
         working-directory: ./pedidopgto
         env:
           DB_USERNAME: ${{ secrets.DB_MASTER_USERNAME }}
@@ -148,10 +165,17 @@ jobs:
             -var="cliente_endpoint=$CLIENTE_ENDPOINT" \
             -var="produto_endpoint=$PRODUTO_ENDPOINT"
 
-  cleanup:
-    name: Cleanup on Failure
+      - name: Rollback PedidoPgto on Failure
+        if: failure() && steps.deploy_pedidopgto.outcome == 'failure'
+        working-directory: ./pedidopgto
+        run: |
+          terraform destroy -auto-approve
+          echo "PedidoPgto microservice rolled back due to deployment failure"
+
+  global_cleanup:
+    name: Global Cleanup on Complete Failure
     needs: [validate, deploy_cliente, deploy_produto, deploy_pedidopgto]
-    if: failure()  # Executa apenas se algum job falhar
+    if: failure()
     runs-on: ubuntu-latest
 
     steps:
@@ -168,7 +192,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Destroy Resources
+      - name: Rollback Cliente
+        working-directory: ./cliente
+        continue-on-error: true
         run: |
-          terraform init
           terraform destroy -auto-approve
+          echo "Cliente microservice rolled back"
+
+      - name: Rollback Produto
+        working-directory: ./produto
+        continue-on-error: true
+        run: |
+          terraform destroy -auto-approve
+          echo "Produto microservice rolled back"
+
+      - name: Rollback PedidoPgto
+        working-directory: ./pedidopgto
+        continue-on-error: true
+        run: |
+          terraform destroy -auto-approve
+          echo "PedidoPgto microservice rolled back"
+
+      - name: Notify Failure
+        if: failure()
+        run: echo "Deployment failed. No Slack notification configured."
