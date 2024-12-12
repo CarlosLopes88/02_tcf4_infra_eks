@@ -292,6 +292,11 @@ resource "kubernetes_deployment" "microservice_cliente" {
             name  = "SERVICE_NAME"
             value = "microservice-cliente"
           }
+
+          env {
+          name  = "DOCDB_DBNAME"
+          value =  var.db_name
+          }
         }
 
         image_pull_secrets {
@@ -336,6 +341,10 @@ variable "db_password" {
 
 variable "db_endpoint" {
   description = "DocumentDB endpoint for the application"
+}
+
+variable "db_name" {
+  description = "Database name for the application"
 }
 
 output "microservice_cliente_loadbalancer_endpoint" {
