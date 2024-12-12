@@ -51,8 +51,7 @@ jobs:
       id: get-endpoint
       working-directory: ./cliente
       run: |
-        ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint)
-        echo "endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
+        echo "endpoint=$(terraform output -json microservice_cliente_loadbalancer_endpoint | jq -r '.')" >> "$GITHUB_OUTPUT"
 
   deploy-produto:
     name: Deploy Microserviço Produto
@@ -93,8 +92,7 @@ jobs:
       id: get-endpoint
       working-directory: ./produto
       run: |
-        ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint)
-        echo "endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
+        echo "endpoint=$(terraform output -json microservice_produto_loadbalancer_endpoint | jq -r '.')" >> "$GITHUB_OUTPUT"
 
   deploy-pedidopgto:
     name: Deploy Microserviço Pedido e Pagamento
