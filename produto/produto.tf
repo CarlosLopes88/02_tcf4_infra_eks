@@ -284,7 +284,7 @@ resource "kubernetes_deployment" "microservice_produto" {
           }
 
           env {
-            name  = "DOCDB_ENDPOINT_PRO"
+            name  = "DOCDB_CLUSTER_ENDPOINT_PRO"
             value = var.db_endpoint
           }
 

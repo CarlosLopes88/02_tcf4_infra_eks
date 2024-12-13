@@ -129,7 +129,7 @@ resource "aws_iam_role_policy_attachment" "ecr_read_only" {
 ###############################
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 19.0"
+  version = "~> 19.16.0"  # Atualizado para versão mais recente
 
   cluster_name    = "eks-pedidopgto"
   cluster_version = "1.28"
@@ -182,11 +182,16 @@ module "eks" {
 }
 
 ###############################
-# Wait for EKS
+# Wait for Resources
 ###############################
 resource "time_sleep" "wait_for_cluster" {
   depends_on = [module.eks]
   create_duration = "60s"
+}
+
+resource "time_sleep" "wait_for_sg" {
+  depends_on = [time_sleep.wait_for_cluster]
+  create_duration = "30s"
 }
 
 ###############################
@@ -195,7 +200,7 @@ resource "time_sleep" "wait_for_cluster" {
 data "aws_ecr_authorization_token" "token" {}
 
 resource "kubernetes_secret" "ecr_secret" {
-  depends_on = [time_sleep.wait_for_cluster, aws_iam_role_policy_attachment.ecr_read_only]
+  depends_on = [time_sleep.wait_for_sg, aws_iam_role_policy_attachment.ecr_read_only]
   
   metadata {
     name = "ecr-secret"
@@ -294,12 +299,12 @@ resource "kubernetes_deployment" "microservice_pedidopgto" {
           }
 
           env {
-          name  = "DOCDB_DBNAME"
-          value =  var.db_name
+            name  = "DOCDB_DBNAME"
+            value = var.db_name
           }
 
           env {
-            name  = "DOCDB_CLUSTER_ENDPOINT_PED"
+            name  = "DOCDB_ENDPOINT_PED"
             value = var.db_endpoint
           }
         }
