@@ -86,18 +86,16 @@ aws kms delete-alias --alias-name alias/eks/eks-pedidopgto
 aws logs delete-log-group --log-group-name /aws/eks/eks-pedidopgto/cluster
 
 
-aws eks update-kubeconfig --name eks-cliente --region us-east-1
+aws eks update-kubeconfig --name eks-produto --region us-east-1
 
 kubectl get node 
-
-kubectl service
 
 kubectl get service
 
 kubectl get pods
 
-kubectl logs 
+kubectl get logs deployment microservice-produto-deployment-5466cb4696-ht6bk
 
-kubectl describe pod 
+kubectl describe pod microservice-produto-deployment-5466cb4696-ht6bk
 
-kubectl describe deployment 
+kubectl describe deployment microservice-produto-deployment-5466cb4696-ht6bk
