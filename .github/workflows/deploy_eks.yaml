@@ -40,6 +40,9 @@ jobs:
           echo "::endgroup::"
           
           echo "::group::Aguardando EKS Cliente"
+          echo "Configurando kubectl..."
+          aws eks update-kubeconfig --name eks-cliente --region ${{ secrets.AWS_REGION }}
+          
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-cliente --region ${{ secrets.AWS_REGION }}
           echo "::endgroup::"
@@ -64,24 +67,32 @@ jobs:
           max_attempts=10
           attempt=1
           
-          until ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint) || [ $attempt -eq $max_attempts ]; do
-            echo "Tentativa $attempt de $max_attempts para obter endpoint..."
+          while [ $attempt -le $max_attempts ]; do
+            if ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint 2>/dev/null); then
+              if [ -n "$ENDPOINT" ]; then
+                echo "Endpoint encontrado: $ENDPOINT"
+                echo "lb-endpoint=$ENDPOINT" >> "$GITHUB_OUTPUT"
+                break
+              fi
+            fi
+            
+            echo "Tentativa $attempt de $max_attempts..."
             sleep 30
             attempt=$((attempt + 1))
           done
           
-          if [ -n "$ENDPOINT" ]; then
-            echo "Endpoint encontrado: $ENDPOINT"
-            echo "lb-endpoint=$ENDPOINT" >> "$GITHUB_OUTPUT"
-            
-            echo "Conteúdo do GITHUB_OUTPUT:"
-            cat "$GITHUB_OUTPUT"
-          else
+          if [ $attempt -gt $max_attempts ]; then
             echo "::error::Falha ao obter endpoint do LoadBalancer após $max_attempts tentativas"
             exit 1
           fi
           
           echo "::endgroup::"
+
+      - name: Verify Cliente Endpoint
+        run: |
+          echo "=== CLIENTE ENDPOINT VERIFICATION ==="
+          echo "Output value: ${{ steps.get-endpoint.outputs.lb-endpoint }}"
+          echo "==================================="
 
   deploy-produto:
     runs-on: ubuntu-latest
@@ -114,6 +125,9 @@ jobs:
           echo "::endgroup::"
             
           echo "::group::Aguardando EKS Produto"
+          echo "Configurando kubectl..."
+          aws eks update-kubeconfig --name eks-produto --region ${{ secrets.AWS_REGION }}
+          
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-produto --region ${{ secrets.AWS_REGION }}
           echo "::endgroup::"
@@ -138,24 +152,32 @@ jobs:
           max_attempts=10
           attempt=1
           
-          until ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint) || [ $attempt -eq $max_attempts ]; do
-            echo "Tentativa $attempt de $max_attempts para obter endpoint..."
+          while [ $attempt -le $max_attempts ]; do
+            if ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint 2>/dev/null); then
+              if [ -n "$ENDPOINT" ]; then
+                echo "Endpoint encontrado: $ENDPOINT"
+                echo "lb-endpoint=$ENDPOINT" >> "$GITHUB_OUTPUT"
+                break
+              fi
+            fi
+            
+            echo "Tentativa $attempt de $max_attempts..."
             sleep 30
             attempt=$((attempt + 1))
           done
           
-          if [ -n "$ENDPOINT" ]; then
-            echo "Endpoint encontrado: $ENDPOINT"
-            echo "lb-endpoint=$ENDPOINT" >> "$GITHUB_OUTPUT"
-            
-            echo "Conteúdo do GITHUB_OUTPUT:"
-            cat "$GITHUB_OUTPUT"
-          else
+          if [ $attempt -gt $max_attempts ]; then
             echo "::error::Falha ao obter endpoint do LoadBalancer após $max_attempts tentativas"
             exit 1
           fi
           
           echo "::endgroup::"
+
+      - name: Verify Produto Endpoint
+        run: |
+          echo "=== PRODUTO ENDPOINT VERIFICATION ==="
+          echo "Output value: ${{ steps.get-endpoint.outputs.lb-endpoint }}"
+          echo "==================================="
 
   deploy-pedidopgto:
     runs-on: ubuntu-latest
@@ -199,6 +221,9 @@ jobs:
           echo "::endgroup::"
             
           echo "::group::Aguardando EKS Pedido/Pagamento"
+          echo "Configurando kubectl..."
+          aws eks update-kubeconfig --name eks-pedidopgto --region ${{ secrets.AWS_REGION }}
+          
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-pedidopgto --region ${{ secrets.AWS_REGION }}
           echo "::endgroup::"
