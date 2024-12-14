@@ -52,11 +52,15 @@ jobs:
         id: get-endpoint
         working-directory: ./cliente
         run: |
+          terraform output -raw microservice_cliente_loadbalancer_endpoint
           {
-            echo 'lb-endpoint<<EOF'
+            echo "lb-endpoint<<EOF"
             terraform output -raw microservice_cliente_loadbalancer_endpoint
             echo 'EOF'
           } >> $GITHUB_OUTPUT
+
+          echo "Conteúdo do GITHUB_OUTPUT:"
+          cat $GITHUB_OUTPUT
 
   deploy-produto:
     runs-on: ubuntu-latest
@@ -101,11 +105,15 @@ jobs:
         id: get-endpoint
         working-directory: ./produto
         run: |
+          terraform output -raw microservice_produto_loadbalancer_endpoint
           {
-            echo 'lb-endpoint<<EOF'
+            echo "lb-endpoint<<EOF"
             terraform output -raw microservice_produto_loadbalancer_endpoint
             echo 'EOF'
           } >> $GITHUB_OUTPUT
+
+          echo "Conteúdo do GITHUB_OUTPUT:"
+          cat $GITHUB_OUTPUT
 
   deploy-pedidopgto:
     runs-on: ubuntu-latest
