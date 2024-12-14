@@ -371,7 +371,7 @@ variable "db_name" {
 }
 
 variable "pagseguro_token" {
-  description = "Token de autenticação do PagSeguro"
+  description = "Token de autenticação para PagSeguro"
 }
 
 output "microservice_pedidopgto_loadbalancer_endpoint" {
