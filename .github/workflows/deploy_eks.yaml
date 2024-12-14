@@ -30,16 +30,21 @@ jobs:
       - name: Deploy Cliente
         working-directory: ./cliente
         run: |
+          echo "::group::Deploy da Infraestrutura do Cliente"
           terraform init
           terraform apply -auto-approve \
             -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
             -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
             -var="db_name=${{ secrets.DOCDB_DBNAME }}" \
             -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_CLI }}"
+          echo "::endgroup::"
           
+          echo "::group::Aguardando EKS Cliente"
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-cliente --region ${{ secrets.AWS_REGION }}
+          echo "::endgroup::"
           
+          echo "::group::Aguardando Deployment Cliente"
           attempt=1
           max_attempts=10
           until kubectl rollout status deployment/microservice-cliente-deployment || [ $attempt -eq $max_attempts ]; do
@@ -47,23 +52,36 @@ jobs:
             sleep 30
             attempt=$((attempt + 1))
           done
+          echo "::endgroup::"
 
       - name: Get LoadBalancer Endpoint
         id: get-endpoint
         working-directory: ./cliente
         run: |
-          terraform output -raw microservice_cliente_loadbalancer_endpoint
-          {
-            echo "lb-endpoint<<EOF"
-            terraform output -raw microservice_cliente_loadbalancer_endpoint
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
-
-      - name: Verify Cliente Endpoint
-        run: |
-          echo "=== CLIENTE ENDPOINT VERIFICATION ==="
-          echo "Output value: ${{ steps.get-endpoint.outputs.lb-endpoint }}"
-          echo "==================================="
+          echo "::group::Obtendo Endpoint do LoadBalancer Cliente"
+          echo "Aguardando LoadBalancer ficar disponível..."
+          
+          max_attempts=10
+          attempt=1
+          
+          until ENDPOINT=$(terraform output -raw microservice_cliente_loadbalancer_endpoint) || [ $attempt -eq $max_attempts ]; do
+            echo "Tentativa $attempt de $max_attempts para obter endpoint..."
+            sleep 30
+            attempt=$((attempt + 1))
+          done
+          
+          if [ -n "$ENDPOINT" ]; then
+            echo "Endpoint encontrado: $ENDPOINT"
+            echo "lb-endpoint=$ENDPOINT" >> "$GITHUB_OUTPUT"
+            
+            echo "Conteúdo do GITHUB_OUTPUT:"
+            cat "$GITHUB_OUTPUT"
+          else
+            echo "::error::Falha ao obter endpoint do LoadBalancer após $max_attempts tentativas"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
 
   deploy-produto:
     runs-on: ubuntu-latest
@@ -86,16 +104,21 @@ jobs:
       - name: Deploy Produto
         working-directory: ./produto
         run: |
+          echo "::group::Deploy da Infraestrutura do Produto"
           terraform init
           terraform apply -auto-approve \
             -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
             -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
             -var="db_name=${{ secrets.DOCDB_DBNAME }}" \
             -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PRO }}"
+          echo "::endgroup::"
             
+          echo "::group::Aguardando EKS Produto"
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-produto --region ${{ secrets.AWS_REGION }}
+          echo "::endgroup::"
           
+          echo "::group::Aguardando Deployment Produto"
           attempt=1
           max_attempts=10
           until kubectl rollout status deployment/microservice-produto-deployment || [ $attempt -eq $max_attempts ]; do
@@ -103,23 +126,36 @@ jobs:
             sleep 30
             attempt=$((attempt + 1))
           done
+          echo "::endgroup::"
 
       - name: Get LoadBalancer Endpoint
         id: get-endpoint
         working-directory: ./produto
         run: |
-          terraform output -raw microservice_produto_loadbalancer_endpoint
-          {
-            echo "lb-endpoint<<EOF"
-            terraform output -raw microservice_produto_loadbalancer_endpoint
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
-
-      - name: Verify Produto Endpoint
-        run: |
-          echo "=== PRODUTO ENDPOINT VERIFICATION ==="
-          echo "Output value: ${{ steps.get-endpoint.outputs.lb-endpoint }}"
-          echo "==================================="
+          echo "::group::Obtendo Endpoint do LoadBalancer Produto"
+          echo "Aguardando LoadBalancer ficar disponível..."
+          
+          max_attempts=10
+          attempt=1
+          
+          until ENDPOINT=$(terraform output -raw microservice_produto_loadbalancer_endpoint) || [ $attempt -eq $max_attempts ]; do
+            echo "Tentativa $attempt de $max_attempts para obter endpoint..."
+            sleep 30
+            attempt=$((attempt + 1))
+          done
+          
+          if [ -n "$ENDPOINT" ]; then
+            echo "Endpoint encontrado: $ENDPOINT"
+            echo "lb-endpoint=$ENDPOINT" >> "$GITHUB_OUTPUT"
+            
+            echo "Conteúdo do GITHUB_OUTPUT:"
+            cat "$GITHUB_OUTPUT"
+          else
+            echo "::error::Falha ao obter endpoint do LoadBalancer após $max_attempts tentativas"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
 
   deploy-pedidopgto:
     runs-on: ubuntu-latest
@@ -129,10 +165,10 @@ jobs:
 
       - name: Debug Endpoints
         run: |
-          echo "=== DEBUG INFORMATION ==="
+          echo "::group::Debug dos Endpoints"
           echo "Cliente Endpoint: ${{ needs.deploy-cliente.outputs.loadbalancer_endpoint }}"
           echo "Produto Endpoint: ${{ needs.deploy-produto.outputs.loadbalancer_endpoint }}"
-          echo "========================"
+          echo "::endgroup::"
 
       - uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -147,6 +183,7 @@ jobs:
       - name: Deploy Pedido e Pagamento
         working-directory: ./pedidopgto
         run: |
+          echo "::group::Deploy da Infraestrutura de Pedido e Pagamento"
           echo "Using Cliente LB: ${{ needs.deploy-cliente.outputs.loadbalancer_endpoint }}"
           echo "Using Produto LB: ${{ needs.deploy-produto.outputs.loadbalancer_endpoint }}"
           
@@ -159,10 +196,14 @@ jobs:
             -var="db_name=${{ secrets.DOCDB_DBNAME }}" \
             -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}" \
             -var="pagseguro_token=${{ secrets.PAGSEGURO_TOKEN }}"
+          echo "::endgroup::"
             
+          echo "::group::Aguardando EKS Pedido/Pagamento"
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-pedidopgto --region ${{ secrets.AWS_REGION }}
+          echo "::endgroup::"
           
+          echo "::group::Aguardando Deployment Pedido/Pagamento"
           attempt=1
           max_attempts=10
           until kubectl rollout status deployment/microservice-pedidopgto-deployment || [ $attempt -eq $max_attempts ]; do
@@ -170,3 +211,4 @@ jobs:
             sleep 30
             attempt=$((attempt + 1))
           done
+          echo "::endgroup::"
