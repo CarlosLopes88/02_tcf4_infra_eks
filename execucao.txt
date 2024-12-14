@@ -44,7 +44,7 @@ git checkout -b dev
 
 git add .
 
-git commit -m "subida infra eks"
+git commit -m "subida infra cognito"
 
 git push -u origin dev
 

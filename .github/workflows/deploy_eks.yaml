@@ -136,7 +136,8 @@ jobs:
             -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
             -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
             -var="db_name=${{ secrets.DOCDB_DBNAME }}" \
-            -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}"
+            -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}" \
+            -var="pagseguro_token=${{ secrets.PAGSEGURO_TOKEN }}"
             
           echo "Waiting for EKS cluster..."
           aws eks wait cluster-active --name eks-pedidopgto --region ${{ secrets.AWS_REGION }}
