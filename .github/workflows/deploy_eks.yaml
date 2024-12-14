@@ -59,8 +59,11 @@ jobs:
             echo 'EOF'
           } >> $GITHUB_OUTPUT
 
-          echo "Conteúdo do GITHUB_OUTPUT:"
-          cat $GITHUB_OUTPUT
+      - name: Verify Cliente Endpoint
+        run: |
+          echo "=== CLIENTE ENDPOINT VERIFICATION ==="
+          echo "Output value: ${{ steps.get-endpoint.outputs.lb-endpoint }}"
+          echo "==================================="
 
   deploy-produto:
     runs-on: ubuntu-latest
@@ -112,14 +115,24 @@ jobs:
             echo 'EOF'
           } >> $GITHUB_OUTPUT
 
-          echo "Conteúdo do GITHUB_OUTPUT:"
-          cat $GITHUB_OUTPUT
+      - name: Verify Produto Endpoint
+        run: |
+          echo "=== PRODUTO ENDPOINT VERIFICATION ==="
+          echo "Output value: ${{ steps.get-endpoint.outputs.lb-endpoint }}"
+          echo "==================================="
 
   deploy-pedidopgto:
     runs-on: ubuntu-latest
     needs: [deploy-cliente, deploy-produto]
     steps:
       - uses: actions/checkout@v3
+
+      - name: Debug Endpoints
+        run: |
+          echo "=== DEBUG INFORMATION ==="
+          echo "Cliente Endpoint: ${{ needs.deploy-cliente.outputs.loadbalancer_endpoint }}"
+          echo "Produto Endpoint: ${{ needs.deploy-produto.outputs.loadbalancer_endpoint }}"
+          echo "========================"
 
       - uses: aws-actions/configure-aws-credentials@v1
         with:
