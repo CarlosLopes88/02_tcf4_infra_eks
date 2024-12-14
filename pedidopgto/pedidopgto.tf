@@ -304,7 +304,7 @@ resource "kubernetes_deployment" "microservice_pedidopgto" {
           }
 
           env {
-            name  = "DOCDB_ENDPOINT_PED"
+            name  = "DOCDB_CLUSTER_ENDPOINT_PED"
             value = var.db_endpoint
           }
         }
