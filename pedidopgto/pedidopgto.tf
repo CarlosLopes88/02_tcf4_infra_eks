@@ -307,6 +307,11 @@ resource "kubernetes_deployment" "microservice_pedidopgto" {
             name  = "DOCDB_CLUSTER_ENDPOINT_PED"
             value = var.db_endpoint
           }
+
+          env {
+            name  = "PAGSEGURO_TOKEN"
+            value = var.pagseguro_token
+          }
         }
 
         image_pull_secrets {
@@ -363,6 +368,10 @@ variable "db_endpoint" {
 
 variable "db_name" {
   description = "Database name for the application"
+}
+
+variable "pagseguro_token" {
+  description = "Token de autenticação do PagSeguro"
 }
 
 output "microservice_pedidopgto_loadbalancer_endpoint" {
