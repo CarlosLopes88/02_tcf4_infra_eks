@@ -99,3 +99,5 @@ kubectl get logs deployment microservice-produto-deployment-5466cb4696-ht6bk
 kubectl describe pod microservice-produto-deployment-5466cb4696-ht6bk
 
 kubectl describe deployment microservice-produto-deployment-5466cb4696-ht6bk
+
+kubectl logs microservice-produto-deployment-5466cb4696-ht6bk
